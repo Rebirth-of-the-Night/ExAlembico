@@ -1,0 +1,18 @@
+[
+  {
+    "modid": "${modId}",
+    "name": "Ex Alembico",
+    "description": "A mod about alembics and heating.",
+    "version": "${modVersion}",
+    "mcversion": "${mcVersion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": ["phantamanta44"],
+    "logoFile": "",
+    "screenshots": [],
+    "modLanguageAdapter": "net.shadowfacts.forgelin.KotlinAdapter",
+    "useDependencyInformation": true,
+    "dependencies": ["zenfoundry"],
+    "requiredMods": []
+  }
+]

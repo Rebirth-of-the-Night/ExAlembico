@@ -1,0 +1,26 @@
+{
+  "forge_marker": 1,
+  "defaults": {},
+  "variants": {
+    "type": {
+      "alembic": {
+        "model": "exalembico:alembic"
+      },
+      "alembic_nether": {
+        "model": "exalembico:alembic_nether"
+      }
+    },
+    "facing": {
+      "north": {},
+      "east": {
+        "y": 90
+      },
+      "south": {
+        "y": 180
+      },
+      "west": {
+        "y": 270
+      }
+    }
+  }
+}

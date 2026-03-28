@@ -1,0 +1,17 @@
+# Local workspace stuff
+/.idea/
+*.ipr
+*.iml
+TODO.md
+
+# Local Minecraft development environment
+/.gradle/
+/eclipse/
+/run/
+
+# Build output
+/target/
+/build/
+/out/
+/classes/
+

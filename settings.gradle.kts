@@ -1,9 +1,8 @@
-rootProject.name = providers.gradleProperty("mod.id").get()
+rootProject.name = "exalembico"
 
 pluginManagement {
     repositories {
         mavenLocal()
-        // RetroFuturaGradle
         maven {
             name = "GTNH Maven"
             url = uri("https://nexus.gtnewhorizons.com/repository/public/")
@@ -13,7 +12,6 @@ pluginManagement {
             }
         }
         gradlePluginPortal()
-        mavenCentral()
     }
 }
 
@@ -24,5 +22,3 @@ plugins {
         id("org.gradle.toolchains.foojay-resolver-convention") version "0.4.0"
     }
 }
-
-include("src:main:java")

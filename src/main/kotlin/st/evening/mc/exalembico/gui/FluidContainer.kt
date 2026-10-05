@@ -15,7 +15,7 @@ import st.evening.mc.exalembico.util.ModifiableFluidTank
 abstract class FluidContainer : Container() {
     abstract val fluidSlots: List<FluidSlot>
 
-    private val lastSentFluidStacks: MutableList<FluidStack?> by lazy { MutableList(fluidSlots.size) { null } }
+    private val lastSentFluidStacks: Array<FluidStack?> by lazy { arrayOfNulls(fluidSlots.size) }
 
     fun handleSyncFluidSlot(slotIndex: Int, stack: FluidStack?) {
         (fluidSlots[slotIndex].tank as? ModifiableFluidTank)?.setFluidInTank(stack)
@@ -51,13 +51,13 @@ abstract class FluidContainer : Container() {
                     ExAlembico.network.sendTo(message, listener)
                 }
             }
-            lastSentFluidStacks[index] = fluid
+            lastSentFluidStacks[index] = fluid?.copy()
         }
     }
 
     companion object {
         private fun areFluidStacksEqual(a: FluidStack?, b: FluidStack?): Boolean =
-            if (a == null) b == null else (b != null && a.isFluidStackIdentical(b))
+            a?.isFluidStackIdentical(b) ?: (b == null)
     }
 }
 

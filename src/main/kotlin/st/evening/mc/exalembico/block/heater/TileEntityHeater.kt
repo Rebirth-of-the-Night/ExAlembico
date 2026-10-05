@@ -69,6 +69,9 @@ class TileEntityHeater() : TileEntity(), ITickable, HeatSource, IHeatProvider {
             (it.duration / it.recipe.duration.toFloat()).coerceIn(0F, 1F)
         } ?: 0F
 
+    override val showLegs: Boolean
+        get() = ExAConfig.heaterShowsLegs
+
     constructor(heaterType: HeaterType) : this() {
         this.heaterType = heaterType
     }

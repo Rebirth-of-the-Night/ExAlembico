@@ -4,6 +4,7 @@ import net.minecraft.block.Block
 import net.minecraft.block.BlockHorizontal
 import net.minecraft.block.SoundType
 import net.minecraft.block.material.Material
+import net.minecraft.block.properties.PropertyBool
 import net.minecraft.block.properties.PropertyEnum
 import net.minecraft.block.state.BlockFaceShape
 import net.minecraft.block.state.BlockStateContainer
@@ -14,6 +15,7 @@ import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.tileentity.TileEntity
+import net.minecraft.util.BlockRenderLayer
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand
 import net.minecraft.util.Mirror
@@ -34,6 +36,8 @@ import st.evening.mc.exalembico.util.FluidTankWrapper
 class BlockAlembic : BlockHorizontal(Material.IRON) {
     companion object {
         val TYPE: PropertyEnum<AlembicType> = PropertyEnum.create("type", AlembicType::class.java)
+        val LEGS: PropertyBool = PropertyBool.create("legs")
+
         private val BOUNDING_BOX_NS: AxisAlignedBB = AxisAlignedBB(1 / 8.0, 0.0, 5 / 16.0, 7 / 8.0, 9 / 16.0, 11 / 16.0)
         private val BOUNDING_BOX_WE: AxisAlignedBB = AxisAlignedBB(
             BOUNDING_BOX_NS.minZ, BOUNDING_BOX_NS.minY, BOUNDING_BOX_NS.minX,
@@ -46,14 +50,14 @@ class BlockAlembic : BlockHorizontal(Material.IRON) {
             val inv = player.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null) ?: return false
             val te = world.getTileEntity(pos) as? TileEntityAlembic ?: return false
             val insertResult = FluidUtil.tryEmptyContainerAndStow(
-                held, FluidTankWrapper(te.inputTank), inv, 1000, player, true
+                held, FluidTankWrapper(te.inputTank1), inv, 1000, player, true
             )
             if (insertResult.isSuccess) {
                 player.setHeldItem(hand, insertResult.result)
                 return true
             }
             val extractResult = FluidUtil.tryFillContainerAndStow(
-                held, FluidTankWrapper(te.outputTank), inv, 1000, player, true
+                held, FluidTankWrapper(te.inputTank2), inv, 1000, player, true
             )
             if (extractResult.isSuccess) {
                 player.setHeldItem(hand, extractResult.result)
@@ -70,10 +74,11 @@ class BlockAlembic : BlockHorizontal(Material.IRON) {
         defaultState = blockState.baseState
             .withProperty(TYPE, AlembicType.ALEMBIC)
             .withProperty(FACING, EnumFacing.NORTH)
+            .withProperty(LEGS, false)
         hasTileEntity = true
     }
 
-    override fun createBlockState(): BlockStateContainer = BlockStateContainer(this, TYPE, FACING)
+    override fun createBlockState(): BlockStateContainer = BlockStateContainer(this, TYPE, FACING, LEGS)
 
     override fun getStateFromMeta(meta: Int): IBlockState = defaultState
         .withProperty(FACING, EnumFacing.byHorizontalIndex(meta and 0x3))
@@ -81,6 +86,9 @@ class BlockAlembic : BlockHorizontal(Material.IRON) {
 
     override fun getMetaFromState(state: IBlockState): Int =
         state.getValue(FACING).horizontalIndex or (state.getValue(TYPE).ordinal shl 2)
+
+    override fun getActualState(state: IBlockState, world: IBlockAccess, pos: BlockPos): IBlockState =
+        state.withProperty(LEGS, HeatManager.shouldShowLegs(world, pos.down(), EnumFacing.UP))
 
     override fun damageDropped(state: IBlockState): Int = state.getValue(TYPE).ordinal
 
@@ -144,6 +152,8 @@ class BlockAlembic : BlockHorizontal(Material.IRON) {
             EnumFacing.WEST, EnumFacing.EAST -> BOUNDING_BOX_WE
             else -> FULL_BLOCK_AABB // shouldn't happen
         }
+
+    override fun getRenderLayer(): BlockRenderLayer = BlockRenderLayer.CUTOUT
 
     override fun getSubBlocks(tab: CreativeTabs, items: NonNullList<ItemStack>) {
         for (i in 0..<AlembicType.entries.size) {

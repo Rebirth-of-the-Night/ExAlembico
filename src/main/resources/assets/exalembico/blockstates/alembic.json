@@ -21,6 +21,12 @@
       "west": {
         "y": 270
       }
+    },
+    "legs": {
+      "false": {},
+      "true": {
+        "submodel": "exalembico:legs"
+      }
     }
   }
 }

@@ -31,13 +31,19 @@ class TileEntityAlembic() : TileEntity(), ITickable {
     companion object {
         const val SLOT_IN1: Int = 0
         const val SLOT_IN2: Int = 1
-        const val SLOT_OUT: Int = 2
+        const val SLOT_IN3: Int = 2
         const val SLOT_OUT_BONUS: Int = 3
+        const val SLOT_OUT1: Int = 4
+        const val SLOT_OUT2: Int = 5
+        const val SLOT_OUT3: Int = 6
+        const val NUM_SLOTS: Int = 7
     }
 
     private val _inventory: AlembicInventory = AlembicInventory()
-    private val _inputTank: AlembicFluidTank = AlembicFluidTank(true)
-    private val _outputTank: AlembicFluidTank = AlembicFluidTank(false)
+    private val _inputTank1: AlembicFluidTank = AlembicFluidTank(true)
+    private val _inputTank2: AlembicFluidTank = AlembicFluidTank(false)
+    private val _outputTank1: AlembicFluidTank = AlembicFluidTank(false)
+    private val _outputTank2: AlembicFluidTank = AlembicFluidTank(false)
     private var recipeState: RecipeState? = null
 
     lateinit var alembicType: AlembicType private set
@@ -49,11 +55,15 @@ class TileEntityAlembic() : TileEntity(), ITickable {
 
     val inventory: IItemHandler
         get() = _inventory
-    val inputTank: IFluidTank
-        get() = _inputTank
-    val outputTank: IFluidTank
-        get() = _outputTank
-    val fluidInventory: IFluidHandler = FluidHandlerConcatenate(_inputTank, _outputTank)
+    val inputTank1: IFluidTank
+        get() = _inputTank1
+    val inputTank2: IFluidTank
+        get() = _inputTank2
+    val outputTank1: IFluidTank
+        get() = _outputTank1
+    val outputTank2: IFluidTank
+        get() = _outputTank2
+    val fluidInventory: IFluidHandler = FluidHandlerConcatenate(_inputTank1, _inputTank2, _outputTank1, _outputTank2)
 
     val progressFraction: Float
         get() = when (val state = recipeState) {
@@ -173,7 +183,7 @@ class TileEntityAlembic() : TileEntity(), ITickable {
 
     private fun runRecipe(recipe: AlembicRecipe) {
         recipeState = null
-        recipe.runRecipe(world, inventory, inputTank, outputTank)
+        recipe.runRecipe(world, inventory, inputTank1, inputTank2, outputTank1, outputTank2)
     }
 
     private fun getRecipes(): RecipeRegistry<AlembicRecipe> = when (alembicType) {
@@ -188,10 +198,10 @@ class TileEntityAlembic() : TileEntity(), ITickable {
         return heatLevel > 0 && recipe.heatLevels.contains(heatLevel)
     }
 
-    private fun recipeMatches(recipe: AlembicRecipe): Boolean = recipe.matches(inventory, inputTank.fluid)
+    private fun recipeMatches(recipe: AlembicRecipe): Boolean = recipe.matches(inventory, inputTank1, inputTank2)
 
     private fun recipeOutputsFit(recipe: AlembicRecipe): Boolean =
-        recipe.canFitOutputs(inventory, inputTank, outputTank)
+        recipe.canFitOutputs(inventory, outputTank1, outputTank2)
 
     fun dropInventory() {
         _inventory.dropInventory(world, pos.x + 0.5, pos.y + 0.5, pos.z + 0.5)
@@ -202,9 +212,8 @@ class TileEntityAlembic() : TileEntity(), ITickable {
         stateClock++
     }
 
-    override fun getUpdatePacket(): SPacketUpdateTileEntity {
-        return SPacketUpdateTileEntity(pos, 0, NBTTagCompound().also { writeUpdateTag(it) })
-    }
+    override fun getUpdatePacket(): SPacketUpdateTileEntity =
+        SPacketUpdateTileEntity(pos, 0, NBTTagCompound().also { writeUpdateTag(it) })
 
     override fun getUpdateTag(): NBTTagCompound = super.getUpdateTag().also { writeUpdateTag(it) }
 
@@ -224,8 +233,10 @@ class TileEntityAlembic() : TileEntity(), ITickable {
         super.writeToNBT(tag)
         tag.setByte("type", alembicType.ordinal.toByte())
         tag.setTag("inventory", _inventory.serializeNBT())
-        tag.setTag("inputTank", NBTTagCompound().also { _inputTank.writeToNBT(it) })
-        tag.setTag("outputTank", NBTTagCompound().also { _outputTank.writeToNBT(it) })
+        tag.setTag("inputTank1", NBTTagCompound().also { _inputTank1.writeToNBT(it) })
+        tag.setTag("inputTank2", NBTTagCompound().also { _inputTank2.writeToNBT(it) })
+        tag.setTag("outputTank1", NBTTagCompound().also { _outputTank1.writeToNBT(it) })
+        tag.setTag("outputTank2", NBTTagCompound().also { _outputTank2.writeToNBT(it) })
         writeUpdateTag(tag)
         return tag
     }
@@ -234,8 +245,17 @@ class TileEntityAlembic() : TileEntity(), ITickable {
         super.readFromNBT(tag)
         alembicType = AlembicType.entries[tag.getByte("type").toInt()]
         _inventory.deserializeNBT(tag.getCompoundTag("inventory"))
-        _inputTank.readFromNBT(tag.getCompoundTag("inputTank"))
-        _outputTank.readFromNBT(tag.getCompoundTag("outputTank"))
+        if (tag.hasKey("outputTank2", Constants.NBT.TAG_COMPOUND)) {
+            _inputTank1.readFromNBT(tag.getCompoundTag("inputTank1"))
+            _inputTank2.readFromNBT(tag.getCompoundTag("inputTank2"))
+            _outputTank1.readFromNBT(tag.getCompoundTag("outputTank1"))
+            _outputTank2.readFromNBT(tag.getCompoundTag("outputTank2"))
+        } else { // legacy
+            _inputTank1.readFromNBT(tag.getCompoundTag("inputTank"))
+            _inputTank2.readFromNBT(tag.getCompoundTag("outputTank"))
+            _outputTank1.setFluidInTank(null)
+            _outputTank2.setFluidInTank(null)
+        }
         handleUpdateTag(tag)
     }
 
@@ -297,8 +317,12 @@ class TileEntityAlembic() : TileEntity(), ITickable {
         }
     }
 
-    private inner class AlembicInventory : ItemStackHandler(4) {
-        override fun isItemValid(slot: Int, stack: ItemStack): Boolean = slot != SLOT_OUT_BONUS
+    private inner class AlembicInventory : ItemStackHandler(NUM_SLOTS) {
+        override fun setSize(size: Int) {
+            stacks.clear() // inventory size is constant!
+        }
+
+        override fun isItemValid(slot: Int, stack: ItemStack): Boolean = slot < SLOT_OUT_BONUS
 
         fun dropInventory(world: World, x: Double, y: Double, z: Double) {
             stacks.forEach {
@@ -310,8 +334,8 @@ class TileEntityAlembic() : TileEntity(), ITickable {
 
         override fun onContentsChanged(slot: Int) {
             when (slot) {
-                SLOT_IN1, SLOT_IN2, SLOT_OUT -> dirtyState = true
-                SLOT_OUT_BONUS -> dirtyState = dirtyState ?: false
+                SLOT_IN1, SLOT_IN2, SLOT_IN3 -> dirtyState = true
+                SLOT_OUT_BONUS, SLOT_OUT1, SLOT_OUT2, SLOT_OUT3 -> dirtyState = dirtyState ?: false
             }
             markDirty()
         }

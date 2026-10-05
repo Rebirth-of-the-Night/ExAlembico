@@ -8,6 +8,7 @@ import crafttweaker.api.block.IBlockState
 import crafttweaker.api.minecraft.CraftTweakerMC
 import st.evening.mc.exalembico.ExAlembicoConsts
 import st.evening.mc.exalembico.heat.HeatManager
+import stanhebben.zenscript.annotations.Optional
 import stanhebben.zenscript.annotations.ZenClass
 import stanhebben.zenscript.annotations.ZenMethod
 
@@ -16,11 +17,11 @@ import stanhebben.zenscript.annotations.ZenMethod
 object CrTExAlembico {
     @JvmStatic
     @ZenMethod
-    fun registerHeatSourceBlock(block: IBlock, heatLevel: Int) {
+    fun registerHeatSourceBlock(block: IBlock, heatLevel: Int, @Optional(valueBoolean = false) showLegs: Boolean) {
         val blockMc = CraftTweakerMC.getBlock(block)
         CraftTweakerAPI.apply(object : IAction {
             override fun apply() {
-                HeatManager.registerHeatSourceBlock(blockMc, heatLevel)
+                HeatManager.registerHeatSourceBlock(blockMc, heatLevel, showLegs)
             }
 
             override fun describe(): String = "Registering Ex Alembico heat source for $block"
@@ -29,11 +30,11 @@ object CrTExAlembico {
 
     @JvmStatic
     @ZenMethod
-    fun registerHeatSourceBlock(state: IBlockState, heatLevel: Int) {
+    fun registerHeatSourceBlock(state: IBlockState, heatLevel: Int, @Optional(valueBoolean = false) showLegs: Boolean) {
         val stateMc = CraftTweakerMC.getBlockState(state)
         CraftTweakerAPI.apply(object : IAction {
             override fun apply() {
-                HeatManager.registerHeatSourceBlock(stateMc, heatLevel)
+                HeatManager.registerHeatSourceBlock(stateMc, heatLevel, showLegs)
             }
 
             override fun describe(): String = "Registering Ex Alembico heat source for $state"

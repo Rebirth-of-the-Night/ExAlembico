@@ -23,4 +23,11 @@ public class ExAConfig {
     @Config.Comment("Should the nether alembic inherit recipes from the alembic?")
     @Config.RequiresMcRestart
     public static boolean netherAlembicInherit = true;
+
+    @Config.Comment("Bonus chance multiplier for ?")
+    @Config.RequiresMcRestart
+    public static double netherAlembicInheritBonusModifier = 1.2D;
+
+    @Config.Comment("Should the alembic model render with legs when placed on the heater?")
+    public static boolean heaterShowsLegs = false;
 }

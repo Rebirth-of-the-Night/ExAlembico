@@ -9,17 +9,25 @@ object ExARecipeManager {
 
     internal fun finalize() {
         if (ExAConfig.netherAlembicInherit) {
-            alembicRecipes.forEach { netherAlembicRecipes.addRecipe(it.withBonusModifier(1.2F)) }
+            val bonusMod = ExAConfig.netherAlembicInheritBonusModifier.toFloat()
+            alembicRecipes.forEach { recipe ->
+                netherAlembicRecipes.addRecipe(
+                    recipe.bonusOutput?.let { (stack, odds) ->
+                        recipe.run {
+                            AlembicRecipe(
+                                heatLevels, duration, inputItems, inputItem3, inputFluid1, inputFluid2,
+                                outputItems, outputItem3, outputFluid1, outputFluid2, stack to (odds * bonusMod)
+                            )
+                        }
+                    } ?: recipe
+                )
+            }
         }
 
         alembicRecipes.freeze()
         netherAlembicRecipes.freeze()
         heaterRecipes.freeze()
     }
-
-    private fun AlembicRecipe.withBonusModifier(modifier: Float): AlembicRecipe = bonusOutput?.let { (stack, odds) ->
-        AlembicRecipe(heatLevels, duration, inputItems, inputFluid, output, outputFluid, stack to (odds * modifier))
-    } ?: this
 }
 
 open class RecipeRegistry<T> : MutableIterable<T> {

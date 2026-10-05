@@ -18,9 +18,6 @@ import net.minecraftforge.fluids.FluidStack
 import st.evening.mc.exalembico.ExAlembicoConsts
 import st.evening.mc.exalembico.block.alembic.AlembicType
 import st.evening.mc.exalembico.recipe.AlembicRecipe
-import st.evening.mc.exalembico.recipe.FluidIn
-import st.evening.mc.exalembico.recipe.ItemIn
-import st.evening.mc.exalembico.recipe.ItemOut
 import st.evening.mc.exalembico.util.formatPercentage
 import st.evening.mc.exalembico.util.formatTicksAsSeconds
 
@@ -34,73 +31,66 @@ class AlembicJeiRecipeWrapper private constructor(
         progressBar, recipe.duration.coerceAtLeast(4), IDrawableAnimated.StartDirection.BOTTOM, false
     )
 
+    private fun MutableList<List<ItemStack>>.setIngredient(index: Int, ingredient: Any) {
+        this[index] = stackHelper.toItemStackList(ingredient)
+    }
+
     override fun getIngredients(ingredients: IIngredients) {
         val inputItems = MutableList<List<ItemStack>>(3) { emptyList() }
-        val outputItems = MutableList<List<ItemStack>>(4) { emptyList() }
-        val inputFluids = MutableList<List<FluidStack>>(1) { emptyList() }
-        val outputFluids = MutableList<List<FluidStack>>(2) { emptyList() }
-
+        val inputFluids = MutableList<List<FluidStack>>(2) { emptyList() }
+        val twoLeftInputs: Boolean
         when (val input = recipe.inputItems) {
-            null -> {}
-            is AlembicRecipe.InputItems.One -> setInputLists(input.input, inputItems, 0, outputItems, 2)
+            null -> twoLeftInputs = false
+            is AlembicRecipe.InputItems.One -> {
+                inputItems.setIngredient(0, input.input)
+                twoLeftInputs = false
+            }
             is AlembicRecipe.InputItems.Two -> {
-                setInputLists(input.input1, inputItems, 0, outputItems, 2)
-                setInputLists(input.input2, inputItems, 1, outputItems, 3)
+                inputItems.setIngredient(0, input.input1)
+                inputItems.setIngredient(1, input.input2)
+                twoLeftInputs = true
             }
         }
-
-        when (val input = recipe.inputFluid) {
-            null -> {}
-            is FluidIn.Stack -> inputFluids[0] = listOf(input.input)
-            is FluidIn.Transform -> {
-                inputFluids[0] = listOf(input.input)
-                outputFluids[1] = listOf(input.output)
-            }
+        recipe.inputItem3?.let {
+            inputItems.setIngredient(2, it)
         }
-
-        when (val output = recipe.output) {
-            null -> {}
-            is ItemOut.Stack -> outputItems[0] = stackHelper.toItemStackList(output.output)
-            is ItemOut.Transform -> {
-                outputItems[0] = stackHelper.toItemStackList(output.output)
-                inputItems[2] = stackHelper.toItemStackList(output.input)
-            }
+        recipe.inputFluid1?.let {
+            inputFluids[0] = listOf(it)
         }
-
-        recipe.outputFluid?.let { output ->
-            outputFluids[0] = listOf(output)
+        recipe.inputFluid2?.let {
+            inputFluids[1] = listOf(it)
         }
-
-        recipe.bonusOutput?.let { output ->
-            outputItems[1] = stackHelper.toItemStackList(output.first)
-        }
-
         ingredients.setInputLists(VanillaTypes.ITEM, inputItems)
-        ingredients.setOutputLists(VanillaTypes.ITEM, outputItems)
         ingredients.setInputLists(VanillaTypes.FLUID, inputFluids)
+
+        val outputItems = MutableList<List<ItemStack>>(4) { emptyList() }
+        val outputFluids = MutableList<List<FluidStack>>(2) { emptyList() }
+        when (val output = recipe.outputItems) {
+            null -> {}
+            is AlembicRecipe.OutputItems.One -> outputItems.setIngredient(if (twoLeftInputs) 1 else 0, output.output)
+            is AlembicRecipe.OutputItems.Two -> {
+                outputItems.setIngredient(0, output.output1)
+                outputItems.setIngredient(1, output.output2)
+            }
+        }
+        recipe.outputItem3?.let {
+            outputItems.setIngredient(2, it)
+        }
+        recipe.outputFluid1?.let {
+            outputFluids[0] = listOf(it)
+        }
+        recipe.outputFluid2?.let {
+            outputFluids[1] = listOf(it)
+        }
+        recipe.bonusOutput?.let { output ->
+            outputItems.setIngredient(3, output.first)
+        }
+        ingredients.setOutputLists(VanillaTypes.ITEM, outputItems)
         ingredients.setOutputLists(VanillaTypes.FLUID, outputFluids)
+
         ingredients.setInputLists(
             ExAJeiPlugin.ING_TYPE_HEAT, listOf(recipe.heatLevels.toArray().apply { sort() }.asList())
         )
-    }
-
-    private fun setInputLists(
-        ingredient: ItemIn,
-        inputItems: MutableList<List<ItemStack>>,
-        inputIndex: Int,
-        outputItems: MutableList<List<ItemStack>>,
-        outputIndex: Int
-    ) {
-        when (ingredient) {
-            is ItemIn.Stack -> {
-                inputItems[inputIndex] = stackHelper.toItemStackList(ingredient.input)
-            }
-
-            is ItemIn.Transform -> {
-                inputItems[inputIndex] = stackHelper.toItemStackList(ingredient.input)
-                outputItems[outputIndex] = stackHelper.toItemStackList(ingredient.output)
-            }
-        }
     }
 
     override fun drawInfo(mc: Minecraft, recipeWidth: Int, recipeHeight: Int, mouseX: Int, mouseY: Int) {
@@ -159,33 +149,19 @@ class AlembicJeiRecipeCategory(type: AlembicType, guiHelper: IGuiHelper) : IReci
         layout.itemStacks.run {
             init(0, true, 8, 5)
             init(1, true, 27, 5)
-            init(2, false, 73, 5)
-            init(3, false, 76, 36)
-            init(4, false, JeiTransformOutputItemRenderer, 25, 22, 8, 8, 0, 0)
-            init(5, false, JeiTransformOutputItemRenderer, 44, 22, 8, 8, 0, 0)
-            init(6, true, JeiTransformInputItemRenderer, 66, -2, 8, 8, 0, 0)
-
-            val inputs = ingredients.getInputs(VanillaTypes.ITEM)
-            val outputs = ingredients.getOutputs(VanillaTypes.ITEM)
-            set(0, inputs[0])
-            set(1, inputs[1])
-            set(2, outputs[0])
-            set(3, outputs[1])
-            set(4, outputs[2])
-            set(5, outputs[3])
-            set(6, inputs[2])
+            init(2, true, 73, 5)
+            init(3, false, JeiTransformOutputItemRenderer, 25, 22, 8, 8, 0, 0)
+            init(4, false, JeiTransformOutputItemRenderer, 44, 22, 8, 8, 0, 0)
+            init(5, false, JeiTransformOutputItemRenderer, 90, 22, 8, 8, 0, 0)
+            init(6, false, 76, 36)
+            set(ingredients)
         }
         layout.fluidStacks.run {
             init(0, true, 48, 6, 5, 16, 1000, false, leftGaugeOverlay)
-            init(1, false, 94, 6, 5, 16, 1000, false, rightGaugeOverlay)
+            init(1, true, 94, 6, 5, 16, 1000, false, rightGaugeOverlay)
             init(2, false, JeiTransformOutputFluidRenderer(1000, false, 5, 16, null), 56, 9, 5, 16, 0, 0)
+            init(3, false, JeiTransformOutputFluidRenderer(1000, false, 5, 16, null), 102, 9, 5, 16, 0, 0)
             set(ingredients)
-
-            val inputs = ingredients.getInputs(VanillaTypes.FLUID)
-            val outputs = ingredients.getOutputs(VanillaTypes.FLUID)
-            set(0, inputs[0])
-            set(1, outputs[0])
-            set(2, outputs[1])
         }
         layout.getIngredientsGroup(ExAJeiPlugin.ING_TYPE_HEAT).run {
             init(0, true, heatRenderer, 24, 39, 14, 11, 0, 0)

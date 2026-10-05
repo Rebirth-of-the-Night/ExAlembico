@@ -8,7 +8,7 @@ import net.minecraft.world.IBlockAccess
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.capabilities.CapabilityInject
 import net.minecraftforge.common.capabilities.ICapabilityProvider
-import java.util.*
+import java.util.IdentityHashMap
 
 object HeatManager {
     @field:CapabilityInject(HeatSource::class)
@@ -17,14 +17,14 @@ object HeatManager {
     private val blockHeatRegistry: MutableMap<Block, BlockHeatEntry> = IdentityHashMap()
     private val adapterRegistry: MutableList<HeatSourceAdapter> = mutableListOf()
 
-    fun registerHeatSourceBlock(block: Block, heatLevel: Int) {
-        blockHeatRegistry[block] = BlockHeatEntry.Wildcard(heatLevel)
+    fun registerHeatSourceBlock(block: Block, heatLevel: Int, showLegs: Boolean) {
+        blockHeatRegistry[block] = BlockHeatEntry.Wildcard(HeatData(heatLevel, showLegs))
     }
 
-    fun registerHeatSourceBlock(state: IBlockState, heatLevel: Int) {
+    fun registerHeatSourceBlock(state: IBlockState, heatLevel: Int, showLegs: Boolean) {
         val entry = blockHeatRegistry[state.block]?.let { it as? BlockHeatEntry.ByState ?: return }
             ?: BlockHeatEntry.ByState().also { blockHeatRegistry[state.block] = it }
-        entry.states[state] = heatLevel
+        entry.states[state] = HeatData(heatLevel, showLegs)
     }
 
     fun registerHeatSourceAdapter(adapter: HeatSourceAdapter) {
@@ -52,32 +52,36 @@ object HeatManager {
         return false
     }
 
-    fun getHeatLevel(world: IBlockAccess, pos: BlockPos, face: EnumFacing?): Int {
+    fun getHeatSource(world: IBlockAccess, pos: BlockPos, face: EnumFacing?): HeatSource? {
         val state = world.getBlockState(pos)
         blockHeatRegistry[state.block]?.let { entry ->
             when (entry) {
                 is BlockHeatEntry.ByState -> entry.states[state]?.let { return it }
-                is BlockHeatEntry.Wildcard -> return entry.heat
+                is BlockHeatEntry.Wildcard -> return entry.data
             }
         }
 
         world.getTileEntity(pos)?.let { te ->
-            if (te.hasCapability(CAP_HEAT_SOURCE, face)) {
-                te.getCapability(CAP_HEAT_SOURCE, face)?.let { return it.heatLevel }
-            }
-            adapterRegistry.forEach { adapter ->
-                if (adapter.isHeatSource(te, face)) {
-                    adapter.wrapHeatSource(te, face)?.let { return it.heatLevel }
-                }
+            te.getCapability(CAP_HEAT_SOURCE, face)?.let { return it }
+            adapterRegistry.forEach {
+                it.wrapHeatSource(te, face)?.let { return it }
             }
         }
 
-        return 0
+        return null
     }
 
+    fun getHeatLevel(world: IBlockAccess, pos: BlockPos, face: EnumFacing?): Int =
+        getHeatSource(world, pos, face)?.heatLevel ?: 0
+
+    fun shouldShowLegs(world: IBlockAccess, pos: BlockPos, face: EnumFacing?): Boolean =
+        getHeatSource(world, pos, face)?.showLegs == true
+
+    private class HeatData(override val heatLevel: Int, override val showLegs: Boolean) : HeatSource
+
     private sealed interface BlockHeatEntry {
-        class ByState(val states: MutableMap<IBlockState, Int> = IdentityHashMap()) : BlockHeatEntry
-        class Wildcard(val heat: Int) : BlockHeatEntry
+        class ByState(val states: MutableMap<IBlockState, HeatSource> = IdentityHashMap()) : BlockHeatEntry
+        class Wildcard(val data: HeatSource) : BlockHeatEntry
     }
 }
 

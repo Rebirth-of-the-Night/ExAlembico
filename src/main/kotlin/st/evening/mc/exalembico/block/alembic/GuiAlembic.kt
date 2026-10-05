@@ -24,7 +24,7 @@ abstract class GuiAlembic(private val alembicCont: ContainerAlembic) : GuiFluidC
     }
 
     init {
-        ySize = 180
+        ySize = 196
     }
 
     constructor(playerInv: InventoryPlayer, alembic: TileEntityAlembic) : this(ContainerAlembic(playerInv, alembic))
@@ -48,7 +48,7 @@ abstract class GuiAlembic(private val alembicCont: ContainerAlembic) : GuiFluidC
 
         val progHeight = ceil(20 * alembicCont.progressFraction).roundToInt()
         if (progHeight > 0) {
-            drawTexturedModalRect(54, 14 + 20 - progHeight, 176, 59 + 20 - progHeight, 20, progHeight)
+            drawTexturedModalRect(54, 14 + 20 - progHeight, 236, 18 + 20 - progHeight, 20, progHeight)
         }
 
         GlStateManager.popMatrix()
@@ -59,15 +59,7 @@ abstract class GuiAlembic(private val alembicCont: ContainerAlembic) : GuiFluidC
         super.drawFluidSlot(slotIndex, slot)
         bindGuiTexture()
         GlStateManager.color(1F, 1F, 1F, 1F)
-        drawTexturedModalRect(slot.posX, slot.posY, 176 + 5 * slotIndex, 79, 5, 16)
-    }
-
-    override fun drawGuiContainerForegroundLayer(mouseX: Int, mouseY: Int) {
-        super.drawGuiContainerForegroundLayer(mouseX, mouseY)
-        fontRenderer.drawString(
-            I18n.format("container.${ExAlembicoConsts.MOD_ID}.alembic"),
-            8, ySize - 96 + 2, 0x404040
-        )
+        drawTexturedModalRect(slot.posX, slot.posY, 236 + 5 * slotIndex, 38, 5, 16)
     }
 
     override fun renderHoveredToolTip(mouseX: Int, mouseY: Int) {

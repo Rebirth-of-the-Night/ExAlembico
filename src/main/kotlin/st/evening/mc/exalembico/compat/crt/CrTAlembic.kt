@@ -10,13 +10,11 @@ import crafttweaker.api.minecraft.CraftTweakerMC
 import gnu.trove.set.TIntSet
 import gnu.trove.set.hash.TIntHashSet
 import net.minecraft.item.ItemStack
+import net.minecraft.item.crafting.Ingredient
 import net.minecraftforge.fluids.FluidStack
 import st.evening.mc.exalembico.ExAlembicoConsts
 import st.evening.mc.exalembico.recipe.AlembicRecipe
 import st.evening.mc.exalembico.recipe.ExARecipeManager
-import st.evening.mc.exalembico.recipe.FluidIn
-import st.evening.mc.exalembico.recipe.ItemIn
-import st.evening.mc.exalembico.recipe.ItemOut
 import stanhebben.zenscript.annotations.Optional
 import stanhebben.zenscript.annotations.ZenClass
 import stanhebben.zenscript.annotations.ZenMethod
@@ -35,9 +33,13 @@ object CrTAlembic {
 class CrTAlembicRecipeBuilder(private val duration: Int) {
     private val heatLevels: TIntSet = TIntHashSet()
     private var inputItems: AlembicRecipe.InputItems? = null
-    private var inputFluid: FluidIn? = null
-    private var output: ItemOut? = null
-    private var outputFluid: FluidStack? = null
+    private var inputItem3: Ingredient? = null
+    private var inputFluid1: FluidStack? = null
+    private var inputFluid2: FluidStack? = null
+    private var outputItems: AlembicRecipe.OutputItems? = null
+    private var outputItem3: ItemStack? = null
+    private var outputFluid1: FluidStack? = null
+    private var outputFluid2: FluidStack? = null
     private var bonusOutput: Pair<ItemStack, Float>? = null
 
     @ZenMethod
@@ -55,52 +57,63 @@ class CrTAlembicRecipeBuilder(private val duration: Int) {
     }
 
     @ZenMethod
-    fun setInputItem(ingredient: IIngredient, @Optional transformInto: IItemStack?): CrTAlembicRecipeBuilder {
-        val newInput = if (transformInto == null) {
-            ItemIn.Stack(CraftTweakerMC.getIngredient(ingredient))
+    fun setLeftInputItems(ing1: IIngredient, @Optional ing2: IIngredient?): CrTAlembicRecipeBuilder {
+        inputItems = if (ing2 == null) {
+            AlembicRecipe.InputItems.One(CraftTweakerMC.getIngredient(ing1))
         } else {
-            ItemIn.Transform(CraftTweakerMC.getIngredient(ingredient), CraftTweakerMC.getItemStack(transformInto))
-        }
-        inputItems = when (val old = inputItems) {
-            null -> AlembicRecipe.InputItems.One(newInput)
-            is AlembicRecipe.InputItems.One -> AlembicRecipe.InputItems.Two(old.input, newInput)
-            is AlembicRecipe.InputItems.Two -> throw IllegalStateException("Too many input items!")
+            AlembicRecipe.InputItems.Two(CraftTweakerMC.getIngredient(ing1), CraftTweakerMC.getIngredient(ing2))
         }
         return this
     }
 
     @ZenMethod
-    fun setInputFluid(fluid: ILiquidStack, @Optional transformInto: ILiquidStack?): CrTAlembicRecipeBuilder {
-        check(inputFluid == null) { "Too many input fluids!" }
-        inputFluid = if (transformInto == null) {
-            FluidIn.Stack(CraftTweakerMC.getLiquidStack(fluid))
+    fun setRightInputItem(ingredient: IIngredient): CrTAlembicRecipeBuilder {
+        inputItem3 = CraftTweakerMC.getIngredient(ingredient)
+        return this
+    }
+
+    @ZenMethod
+    fun setLeftInputFluid(fluid: ILiquidStack): CrTAlembicRecipeBuilder {
+        inputFluid1 = CraftTweakerMC.getLiquidStack(fluid)
+        return this
+    }
+
+    @ZenMethod
+    fun setRightInputFluid(fluid: ILiquidStack): CrTAlembicRecipeBuilder {
+        inputFluid2 = CraftTweakerMC.getLiquidStack(fluid)
+        return this
+    }
+
+    @ZenMethod
+    fun setLeftOutputItems(stack1: IItemStack, @Optional stack2: IItemStack?): CrTAlembicRecipeBuilder {
+        outputItems = if (stack2 == null) {
+            AlembicRecipe.OutputItems.One(CraftTweakerMC.getItemStack(stack1))
         } else {
-            FluidIn.Transform(CraftTweakerMC.getLiquidStack(fluid), CraftTweakerMC.getLiquidStack(transformInto))
+            AlembicRecipe.OutputItems.Two(CraftTweakerMC.getItemStack(stack1), CraftTweakerMC.getItemStack(stack2))
         }
         return this
     }
 
     @ZenMethod
-    fun setOutputItem(stack: IItemStack, @Optional transformFrom: IIngredient?): CrTAlembicRecipeBuilder {
-        check(output == null) { "Too many output items!" }
-        output = if (transformFrom == null) {
-            ItemOut.Stack(CraftTweakerMC.getItemStack(stack))
-        } else {
-            ItemOut.Transform(CraftTweakerMC.getIngredient(transformFrom), CraftTweakerMC.getItemStack(stack))
-        }
+    fun setRightOutputItem(stack: IItemStack): CrTAlembicRecipeBuilder {
+        outputItem3 = CraftTweakerMC.getItemStack(stack)
         return this
     }
 
     @ZenMethod
-    fun setOutputFluid(fluid: ILiquidStack): CrTAlembicRecipeBuilder {
-        check(outputFluid == null) { "Too many output fluids!" }
-        outputFluid = CraftTweakerMC.getLiquidStack(fluid)
+    fun setLeftOutputFluid(fluid: ILiquidStack): CrTAlembicRecipeBuilder {
+        outputFluid1 = CraftTweakerMC.getLiquidStack(fluid)
+        return this
+    }
+
+    @ZenMethod
+    fun setRightOutputFluid(fluid: ILiquidStack): CrTAlembicRecipeBuilder {
+        outputFluid2 = CraftTweakerMC.getLiquidStack(fluid)
         return this
     }
 
     @ZenMethod
     fun setBonusOutputItem(stack: IItemStack, @Optional(valueDouble = 1.0) odds: Float): CrTAlembicRecipeBuilder {
-        check(bonusOutput == null) { "Too many bonus output items!" }
         bonusOutput = CraftTweakerMC.getItemStack(stack) to odds
         return this
     }
@@ -110,7 +123,10 @@ class CrTAlembicRecipeBuilder(private val duration: Int) {
         CraftTweakerAPI.apply(object : IAction {
             override fun apply() {
                 ExARecipeManager.alembicRecipes.addRecipe(
-                    AlembicRecipe(heatLevels, duration, inputItems, inputFluid, output, outputFluid, bonusOutput)
+                    AlembicRecipe(
+                        heatLevels, duration, inputItems, inputItem3, inputFluid1, inputFluid2,
+                        outputItems, outputItem3, outputFluid1, outputFluid2, bonusOutput
+                    )
                 )
             }
 
@@ -123,7 +139,10 @@ class CrTAlembicRecipeBuilder(private val duration: Int) {
         CraftTweakerAPI.apply(object : IAction {
             override fun apply() {
                 ExARecipeManager.netherAlembicRecipes.addRecipe(
-                    AlembicRecipe(heatLevels, duration, inputItems, inputFluid, output, outputFluid, bonusOutput)
+                    AlembicRecipe(
+                        heatLevels, duration, inputItems, inputItem3, inputFluid1, inputFluid2,
+                        outputItems, outputItem3, outputFluid1, outputFluid2, bonusOutput
+                    )
                 )
             }
 

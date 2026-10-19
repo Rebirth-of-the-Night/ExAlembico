@@ -83,7 +83,6 @@ class TileEntityHeater() : TileEntity(), ITickable, HeatSource, IHeatProvider {
     override fun hasCapability(capability: Capability<*>, facing: EnumFacing?): Boolean = when (capability) {
         CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, HeatManager.CAP_HEAT_SOURCE,
         ExAZenFoundryCompat.CAP_HEAT_PROVIDER -> true
-
         else -> super.hasCapability(capability, facing)
     }
 

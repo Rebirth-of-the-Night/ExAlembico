@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "st.evening.mc.exalembico"
-version = "1.0.1"
+version = "1.0.2"
 
 preludeBuild {
     modId = "exalembico"
